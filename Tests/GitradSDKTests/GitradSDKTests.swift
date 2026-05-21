@@ -42,6 +42,7 @@ final class PluralRulesTests: XCTestCase {
     }
 
     func test_regional_variant_strips_to_base() {
+        // fr-FR should behave as fr
         XCTAssertEqual(PluralRules.category(count: 0, language: "fr-FR"), "one")
         XCTAssertEqual(PluralRules.category(count: 2, language: "fr-FR"), "other")
     }
@@ -54,6 +55,7 @@ final class PluralRulesTests: XCTestCase {
 
     func test_form_zero_key_wins_over_cldr_other() {
         let map = ["zero": "No notifications", "one": "%d notification", "other": "%d notifications"]
+        // English CLDR has no "zero" category, but the explicit "zero" key is honoured for count==0.
         XCTAssertEqual(PluralRules.form(count: 0, map: map, language: "en"), "No notifications")
         XCTAssertEqual(PluralRules.form(count: 1, map: map, language: "en"), "1 notification")
         XCTAssertEqual(PluralRules.form(count: 5, map: map, language: "en"), "5 notifications")
@@ -125,6 +127,13 @@ final class EntryDecodingTests: XCTestCase {
 
 final class ResolveTests: XCTestCase {
 
+    private func makeGitrad(payload: OTAPayload) -> Gitrad {
+        let g = Gitrad.shared
+        // Inject payload directly for testing without a network call.
+        g.injectPayloadForTesting(payload)
+        return g
+    }
+
     func test_exact_language_match() {
         Gitrad.shared.injectPayloadForTesting([
             "fr-FR": ["greeting.hello": .string("Salut")]
@@ -161,9 +170,9 @@ final class ResolveTests: XCTestCase {
                 ])
             ]
         ])
-        XCTAssertEqual(Gitrad.string("notifications.count", count: 0, language: "en"), "No notifications")
-        XCTAssertEqual(Gitrad.string("notifications.count", count: 1, language: "en"), "1 notification")
-        XCTAssertEqual(Gitrad.string("notifications.count", count: 5, language: "en"), "5 notifications")
+        XCTAssertEqual(Gitrad.string("notifications.count", count: 0,  language: "en"), "No notifications")
+        XCTAssertEqual(Gitrad.string("notifications.count", count: 1,  language: "en"), "1 notification")
+        XCTAssertEqual(Gitrad.string("notifications.count", count: 5,  language: "en"), "5 notifications")
     }
 }
 
@@ -176,14 +185,14 @@ final class DiskCacheTests: XCTestCase {
         DiskCache.clear(envName: envName)
     }
 
-    func test_write_read_roundtrip() {
+    func test_write_read_roundtrip() throws {
         let payload: OTAPayload = ["en": ["key": .string("value")]]
         DiskCache.write(payload, envName: envName)
         let loaded = DiskCache.read(envName: envName)
         XCTAssertEqual(loaded?["en"]?["key"], .string("value"))
     }
 
-    func test_clear_removes_cache() {
+    func test_clear_removes_file() {
         let payload: OTAPayload = ["en": ["key": .string("value")]]
         DiskCache.write(payload, envName: envName)
         DiskCache.clear(envName: envName)
