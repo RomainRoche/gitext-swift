@@ -1,4 +1,5 @@
 import Foundation
+import Domain
 
 public final class Gitrad {
 
@@ -10,9 +11,8 @@ public final class Gitrad {
     // MARK: - State (lock-protected)
 
     private let lock = NSLock()
-    private var _config: GitradConfig?
-    private var _payload: OTAPayload = [:]
-    private var _lastFetchDate: Date?
+    private var _container: DependencyContainer?
+    private var _payload: TranslationPayload = .empty
     private var _eventHandler: ((GitradEvent) -> Void)?
 
     public let observableStore = GitradStore()
@@ -26,21 +26,22 @@ public final class Gitrad {
         envName: String,
         maxCacheAge: Int = 3600
     ) {
-        let cfg = GitradConfig(
+        let config = GitradConfig(
             apiKey: apiKey,
             baseUrl: baseUrl,
             envName: envName,
             maxCacheAge: maxCacheAge
         )
-        shared.withLock { shared._config = cfg }
+        let container = DependencyContainer(config: config)
+        shared.withLock { shared._container = container }
 
-        if let cached = DiskCache.read(envName: envName) {
-            shared.withLock { shared._payload = cached }
-            shared.emit(.cacheHit)
-        } else {
-            let baseline = BundleBaseline.load()
-            shared.withLock { shared._payload = baseline }
-            if !baseline.isEmpty { shared.emit(.bundleFallback) }
+        let (payload, source) = container.loadInitial.execute()
+        shared.withLock { shared._payload = payload }
+
+        switch source {
+        case .cache:  shared.emit(.cacheHit)
+        case .bundle: shared.emit(.bundleFallback)
+        case .empty:  break
         }
     }
 
@@ -62,8 +63,11 @@ public final class Gitrad {
         count: Int? = nil,
         language: String? = nil
     ) -> String {
-        let lang = language ?? Self.currentLanguage()
-        return shared.resolve(key: key, count: count, language: lang)
+        let lang = language ?? currentLanguage()
+        let (payload, resolve) = shared.withLock {
+            (shared._payload, shared._container?.resolve)
+        }
+        return resolve?.execute(key: key, count: count, language: lang, in: payload) ?? key
     }
 
     /// Register an event handler for observability (analytics, crash reporting).
@@ -71,120 +75,57 @@ public final class Gitrad {
         shared.withLock { shared._eventHandler = handler }
     }
 
-    // MARK: - Internal
-
-    func resolve(key: String, count: Int? = nil, language: String) -> String {
-        let payload = withLock { _payload }
-        let base    = baseLang(language)
-
-        let entry = payload[language]?[key]
-                 ?? payload[base]?[key]
-                 ?? payload["en"]?[key]
-
-        guard let entry else { return key }
-
-        switch entry {
-        case .string(let s):
-            return s
-        case .plurals(let map):
-            guard let count else { return map["other"] ?? key }
-            return PluralRules.form(count: count, map: map, language: language)
-        }
-    }
-
     // MARK: - Private fetch machinery
 
-    private func fetchIfStale() async {
-        guard let config = withLock({ _config }) else { return }
-        let lastFetch = withLock { _lastFetchDate }
-                     ?? DiskCache.modificationDate(envName: config.envName)
-
-        let stale: Bool
-        if config.maxCacheAge == 0 {
-            stale = true
-        } else if let date = lastFetch {
-            stale = Date().timeIntervalSince(date) > TimeInterval(config.maxCacheAge)
-        } else {
-            stale = true
-        }
-
-        if stale { await fetchAlways() }
-    }
-
     private func fetchAlways() async {
-        guard let config = withLock({ _config }) else { return }
-
+        guard let container = withLock({ _container }) else { return }
         emit(.fetchStarted)
         let start = Date()
 
         do {
-            let payload = try await fetchWithRetry(config: config)
-            withLock {
-                _payload       = payload
-                _lastFetchDate = Date()
-            }
-            DiskCache.write(payload, envName: config.envName)
+            let payload = try await container.fetch.execute()
+            withLock { _payload = payload }
             let ms = Int(Date().timeIntervalSince(start) * 1000)
-            emit(.fetchSucceeded(languages: payload.keys.count, ms: ms))
+            emit(.fetchSucceeded(languages: payload.translations.keys.count, ms: ms))
             observableStore.notifyRefresh()
         } catch {
-            emit(.fetchFailed(error: error))
-            // Existing in-memory payload (from disk cache or bundle) continues to serve.
+            emit(.fetchFailed(error: GitradError(from: error)))
         }
     }
 
-    private func fetchWithRetry(config: GitradConfig) async throws -> OTAPayload {
-        let delays: [UInt64] = [2, 4, 8, 16].map { $0 * 1_000_000_000 }
-        var lastError: Error = GitradError.networkError(URLError(.unknown))
+    private func fetchIfStale() async {
+        guard let container = withLock({ _container }) else { return }
 
-        for attempt in 0..<5 {
-            do {
-                return try await doFetch(config: config)
-            } catch GitradError.unauthorized {
-                throw GitradError.unauthorized
-            } catch GitradError.subscriptionInactive {
-                throw GitradError.subscriptionInactive
-            } catch GitradError.parseError(let e) {
-                throw GitradError.parseError(e)
-            } catch {
-                lastError = error
-            }
-            if attempt < 4 {
-                try await Task.sleep(nanoseconds: delays[attempt])
-            }
+        // Staleness check lives here rather than in a use case so that fetchStarted
+        // is only emitted when a network call is certain to follow.
+        let cacheDate = container.repository.cacheModificationDate()
+        let maxAge = container.maxCacheAge
+
+        let isStale: Bool
+        if maxAge == 0 {
+            isStale = true
+        } else if let date = cacheDate {
+            isStale = Date().timeIntervalSince(date) > maxAge
+        } else {
+            isStale = true
         }
-        throw lastError
-    }
 
-    private func doFetch(config: GitradConfig) async throws -> OTAPayload {
-        let client    = GitradClient(config: config)
-        let signedUrl = try await client.downloadUrl()
-        return try await client.download(from: signedUrl)
-    }
-
-    // MARK: - Testing
-
-    func injectPayloadForTesting(_ payload: OTAPayload) {
-        withLock { _payload = payload }
+        guard isStale else { return }
+        await fetchAlways()
     }
 
     // MARK: - Helpers
 
     @discardableResult
-    private func withLock<T>(_ block: () throws -> T) rethrows -> T {
+    private func withLock<T>(_ block: () -> T) -> T {
         lock.lock()
         defer { lock.unlock() }
-        return try block()
+        return block()
     }
 
     private func emit(_ event: GitradEvent) {
         let handler = withLock { _eventHandler }
         handler?(event)
-    }
-
-    private func baseLang(_ lang: String) -> String {
-        guard let idx = lang.firstIndex(of: "-") else { return lang }
-        return String(lang[..<idx])
     }
 
     private static func currentLanguage() -> String {

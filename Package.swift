@@ -8,16 +8,19 @@ let package = Package(
         .macOS(.v13),
     ],
     products: [
+        // Only GitradSDK is a public product. Domain and Data are internal targets.
         .library(name: "GitradSDK", targets: ["GitradSDK"]),
     ],
     targets: [
+        .target(name: "Domain"),
+        .target(name: "Data", dependencies: ["Domain"]),
         .target(
             name: "GitradSDK",
+            dependencies: ["Domain", "Data"],
             resources: [.process("Resources")]
         ),
-        .testTarget(
-            name: "GitradSDKTests",
-            dependencies: ["GitradSDK"]
-        ),
+        .testTarget(name: "DomainTests", dependencies: ["Domain"]),
+        .testTarget(name: "DataTests", dependencies: ["Data"]),
+        .testTarget(name: "SDKIntegrationTests", dependencies: ["GitradSDK"]),
     ]
 )
