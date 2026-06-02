@@ -2,10 +2,10 @@ import Foundation
 
 // CLDR plural rules: https://unicode.org/reports/tr35/tr35-numbers.html#Language_Plural_Rules
 // The SDK ships its own table and never delegates to the OS for plural selection.
-enum PluralRules {
+package enum PluralRules {
 
     // Returns the CLDR plural category for the given integer count and language tag.
-    static func category(count: Int, language: String) -> String {
+    package static func category(count: Int, language: String) -> String {
         let base = language.components(separatedBy: "-").first?.lowercased() ?? "en"
         switch base {
 
@@ -89,7 +89,7 @@ enum PluralRules {
 
     // Returns the translated plural string for the given count.
     // Special-cases count==0 to try the explicit "zero" key before falling back to CLDR.
-    static func form(count: Int, map: [String: String], language: String) -> String {
+    package static func form(count: Int, map: [String: String], language: String) -> String {
         if count == 0, let zeroForm = map["zero"] {
             return String(format: zeroForm, count)
         }

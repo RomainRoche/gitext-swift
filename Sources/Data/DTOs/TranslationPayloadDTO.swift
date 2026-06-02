@@ -1,14 +1,12 @@
 import Foundation
 
-public typealias OTAPayload = [String: [String: Entry]]
+typealias TranslationPayloadDTO = [String: [String: TranslationEntryDTO]]
 
-public enum Entry: Equatable {
+enum TranslationEntryDTO: Codable, Equatable {
     case string(String)
     case plurals([String: String])
-}
 
-extension Entry: Codable {
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         if let s = try? container.decode(String.self) {
             self = .string(s)
@@ -22,7 +20,7 @@ extension Entry: Codable {
         }
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
         case .string(let s):    try container.encode(s)

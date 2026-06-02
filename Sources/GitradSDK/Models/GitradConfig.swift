@@ -1,5 +1,3 @@
-import Foundation
-
 public struct GitradConfig {
     public let apiKey: String
     public let baseUrl: String
