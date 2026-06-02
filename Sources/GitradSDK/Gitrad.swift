@@ -10,9 +10,14 @@ public final class Gitrad {
 
     // MARK: - State (lock-protected)
 
+    // Minimum interval between network requests as mandated by the server's
+    // Cache-Control: max-age=60 header to stay within rate limits.
+    private static let serverCacheMaxAge: TimeInterval = 60
+
     private let lock = NSLock()
     private var _container: DependencyContainer?
     private var _payload: TranslationPayload = .empty
+    private var _lastFetchDate: Date?
     private var _eventHandler: ((GitradEvent) -> Void)?
 
     public let observableStore = GitradStore()
@@ -79,12 +84,20 @@ public final class Gitrad {
 
     private func fetchAlways() async {
         guard let container = withLock({ _container }) else { return }
+
+        // Respect Cache-Control: max-age=60 — skip if last fetch was recent.
+        let lastFetch = withLock { _lastFetchDate }
+        if let lastFetch, Date().timeIntervalSince(lastFetch) < Self.serverCacheMaxAge { return }
+
         emit(.fetchStarted)
         let start = Date()
 
         do {
             let payload = try await container.fetch.execute()
-            withLock { _payload = payload }
+            withLock {
+                _payload = payload
+                _lastFetchDate = Date()
+            }
             let ms = Int(Date().timeIntervalSince(start) * 1000)
             emit(.fetchSucceeded(languages: payload.translations.keys.count, ms: ms))
             observableStore.notifyRefresh()
