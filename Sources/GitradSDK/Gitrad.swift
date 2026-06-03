@@ -104,6 +104,11 @@ public final class Gitrad {
         return resolve?.execute(key: prefixedKey, count: count, language: lang, in: payload) ?? originalKey
     }
 
+    /// Returns the namespaces declared in the current payload via `_namespaces`, or an empty array.
+    public static var namespaces: [String] {
+        shared.withLock { shared._payload.namespaces }
+    }
+
     /// Register an event handler for observability (analytics, crash reporting).
     public static func onEvent(_ handler: @escaping (GitradEvent) -> Void) {
         shared.withLock { shared._eventHandler = handler }

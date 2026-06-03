@@ -15,21 +15,21 @@ final class LocalTranslationDataSourceTests: XCTestCase {
     }
 
     func test_write_then_read_roundtrip() throws {
-        let dto: TranslationPayloadDTO = ["en": ["key": .string("value")]]
+        let dto = TranslationPayloadDTO(translations: ["en": ["key": .string("value")]])
         source.write(dto)
         let loaded = source.read()
-        XCTAssertEqual(loaded?["en"]?["key"], .string("value"))
+        XCTAssertEqual(loaded?.translations["en"]?["key"], .string("value"))
     }
 
     func test_clear_removes_cache() {
-        let dto: TranslationPayloadDTO = ["en": ["key": .string("value")]]
+        let dto = TranslationPayloadDTO(translations: ["en": ["key": .string("value")]])
         source.write(dto)
         source.clear()
         XCTAssertNil(source.read())
     }
 
     func test_modification_date_set_after_write() {
-        source.write(["en": ["key": .string("value")]])
+        source.write(TranslationPayloadDTO(translations: ["en": ["key": .string("value")]]))
         XCTAssertNotNil(source.modificationDate())
     }
 
