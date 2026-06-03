@@ -65,7 +65,7 @@ public final class Gitrad {
 
     /// Returns a translated string, never throws.
     /// Falls back through: exact locale → base language → "en" → key itself.
-    /// When a `namespace` is configured, it is automatically prepended to `key`.
+    /// When a `namespace` is configured via `configure()`, it is automatically prepended to `key`.
     public static func string(
         _ key: String,
         count: Int? = nil,
@@ -77,6 +77,31 @@ public final class Gitrad {
         }
         let lookupKey = namespace.map { "\($0).\(key)" } ?? key
         return resolve?.execute(key: lookupKey, count: count, language: lang, in: payload) ?? key
+    }
+
+    /// Returns a namespace-scoped accessor. Keys passed to the returned value are
+    /// automatically prefixed with `namespace` before lookup.
+    ///
+    /// Use this in multi-package apps where different packages own different namespaces.
+    /// Leave `namespace` as `nil` in `configure()` when using this API.
+    ///
+    /// ```swift
+    /// private let strings = Gitrad.scoped(to: "payments")
+    /// strings.string("checkout.confirm")   // resolves "payments.checkout.confirm"
+    /// ```
+    public static func scoped(to namespace: String) -> GitradNamespace {
+        GitradNamespace(prefix: namespace)
+    }
+
+    /// Resolves a pre-built lookup key, falling back to `originalKey`.
+    /// Used by `GitradNamespace` and namespaced `GitradStore` to bypass the
+    /// container-level namespace (which must be `nil` in multi-namespace setups).
+    static func string(prefixedKey: String, originalKey: String, count: Int?, language: String?) -> String {
+        let lang = language ?? currentLanguage()
+        let (payload, resolve) = shared.withLock {
+            (shared._payload, shared._container?.resolve)
+        }
+        return resolve?.execute(key: prefixedKey, count: count, language: lang, in: payload) ?? originalKey
     }
 
     /// Register an event handler for observability (analytics, crash reporting).

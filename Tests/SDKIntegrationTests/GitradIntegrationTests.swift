@@ -37,14 +37,48 @@ final class GitradIntegrationTests: XCTestCase {
         XCTAssertEqual(callCount, 0)
     }
 
-    func test_string_with_namespace_returns_key_when_no_translations_loaded() {
+    // MARK: - configure() namespace
+
+    func test_configure_namespace_returns_short_key_as_fallback() {
         Gitrad.configure(
             apiKey: "test-key",
             baseUrl: "https://localhost",
             envName: "test-\(UUID().uuidString)",
             namespace: "app"
         )
-        // No translations loaded, so the fallback is the SHORT key (not the prefixed lookup key).
+        // No translations loaded — fallback is the original short key, not the prefixed lookup key.
         XCTAssertEqual(Gitrad.string("greeting.hello"), "greeting.hello")
+    }
+
+    // MARK: - Gitrad.scoped(to:)
+
+    func test_scoped_returns_short_key_as_fallback_when_no_translations_loaded() {
+        let ns = Gitrad.scoped(to: "onboarding")
+        XCTAssertEqual(ns.string("welcome_title"), "welcome_title")
+    }
+
+    func test_scoped_with_count_returns_short_key_as_fallback() {
+        let ns = Gitrad.scoped(to: "onboarding")
+        XCTAssertEqual(ns.string("step_count", count: 3), "step_count")
+    }
+
+    func test_scoped_with_explicit_language_returns_short_key_as_fallback() {
+        let ns = Gitrad.scoped(to: "onboarding")
+        XCTAssertEqual(ns.string("welcome_title", language: "fr"), "welcome_title")
+    }
+
+    func test_two_scoped_accessors_are_independent() {
+        let onboarding = Gitrad.scoped(to: "onboarding")
+        let payments   = Gitrad.scoped(to: "payments")
+        // Both fall back to their respective short keys — no cross-contamination.
+        XCTAssertEqual(onboarding.string("welcome_title"), "welcome_title")
+        XCTAssertEqual(payments.string("checkout.confirm"), "checkout.confirm")
+    }
+
+    // MARK: - GitradStore(namespace:)
+
+    func test_store_with_namespace_returns_short_key_as_fallback() {
+        let store = GitradStore(namespace: "payments")
+        XCTAssertEqual(store["checkout.confirm"], "checkout.confirm")
     }
 }

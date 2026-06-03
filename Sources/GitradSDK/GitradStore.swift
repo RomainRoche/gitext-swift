@@ -4,10 +4,36 @@ import Combine
 /// Observable store that triggers SwiftUI redraws after a remote refresh.
 public final class GitradStore: ObservableObject {
     @Published public private(set) var revision: Int = 0
+    private let namespace: String?
+    private var refreshSink: AnyCancellable?
+
+    /// Shared store — created once by `Gitrad.shared`. No namespace applied.
+    init() {
+        self.namespace = nil
+    }
+
+    /// Namespace-scoped store. Keys passed to the subscript are automatically
+    /// prefixed with `namespace` before lookup. Refresh events are forwarded
+    /// from the shared store so SwiftUI redraws still fire after a remote fetch.
+    public init(namespace: String) {
+        self.namespace = namespace
+        refreshSink = Gitrad.shared.observableStore.$revision
+            .dropFirst()
+            .sink { [weak self] value in
+                if Thread.isMainThread {
+                    self?.revision = value
+                } else {
+                    DispatchQueue.main.async { self?.revision = value }
+                }
+            }
+    }
 
     /// Look up a translated string for the current locale.
     public subscript(key: String) -> String {
-        Gitrad.string(key)
+        if let ns = namespace {
+            return Gitrad.string(prefixedKey: "\(ns).\(key)", originalKey: key, count: nil, language: nil)
+        }
+        return Gitrad.string(key)
     }
 
     func notifyRefresh() {

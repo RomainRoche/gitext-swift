@@ -31,8 +31,9 @@ Sources/
   GitradSDK/       ← Presentation (public API). Depends on Domain + Data.
     Gitrad.swift           ← public facade + singleton
     DependencyContainer.swift  ← composition root (internal struct)
-    GitradStore.swift      ← ObservableObject for SwiftUI
-    GitradStrings.swift    ← @GitradStrings property wrapper
+    GitradStore.swift      ← ObservableObject for SwiftUI; supports optional namespace
+    GitradStrings.swift    ← @GitradStrings property wrapper; supports optional namespace
+    GitradNamespace.swift  ← lightweight scoped accessor returned by Gitrad.scoped(to:)
     Models/        ← GitradConfig, GitradError, GitradEvent (all public)
 Tests/
   DomainTests/     ← imports Domain directly (package access, no @testable needed)
@@ -65,6 +66,9 @@ GitradSDK → Domain            (direct, for use case types)
 **`string()` flow (synchronous, never throws):**
 - `ResolveTranslationUseCase` walks: exact locale → base language → `"en"` → key itself
 - For plurals, `count == 0` tries an explicit `"zero"` key before CLDR category selection
+- If `GitradConfig.namespace` is set, it is prepended to the key before lookup; the original short key is the fallback
+- `Gitrad.scoped(to:)` returns a `GitradNamespace` that prepends its prefix directly, bypassing the container namespace (the two are mutually exclusive — multi-namespace apps set `namespace: nil` in `configure()`)
+- `GitradStore(namespace:)` and `@GitradStrings(namespace:)` use the same bypass; namespaced stores observe the shared store's `$revision` via a Combine sink so SwiftUI redraws still fire after a remote fetch
 
 ### Access control pattern
 
@@ -90,3 +94,4 @@ GitradSDK → Domain            (direct, for use case types)
 - **`Data` target name**: Shadows `Foundation.Data` as a module name. Safe because Swift resolves `Data` in type position to `Foundation.Data`; the module name only applies in `import` statements.
 - **`GitradError` in Presentation maps `Domain.TranslationFetchError`**: `GitradError(from:)` converts the package-internal `TranslationFetchError` to the public `GitradError` at the Presentation boundary.
 - **No data source protocols**: `RemoteTranslationDataSource`, `LocalTranslationDataSource`, and `BundleTranslationDataSource` are concrete final classes with no protocols. Testability is achieved by testing through `DefaultTranslationRepository` with `@testable import Data`.
+- **Namespace two-path design**: `Gitrad.string()` applies the container namespace (from `GitradConfig`). `GitradNamespace`, `GitradStore(namespace:)`, and `@GitradStrings(namespace:)` bypass the container namespace by calling the internal `Gitrad.string(prefixedKey:originalKey:count:language:)` helper directly. The two approaches are mutually exclusive — single-namespace apps use `configure(namespace:)`, multi-namespace apps leave it `nil` and use `scoped(to:)` per package.
