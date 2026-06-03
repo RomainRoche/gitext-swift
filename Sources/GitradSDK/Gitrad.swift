@@ -29,13 +29,15 @@ public final class Gitrad {
         apiKey: String,
         baseUrl: String,
         envName: String,
-        maxCacheAge: Int = 3600
+        maxCacheAge: Int = 3600,
+        namespace: String? = nil
     ) {
         let config = GitradConfig(
             apiKey: apiKey,
             baseUrl: baseUrl,
             envName: envName,
-            maxCacheAge: maxCacheAge
+            maxCacheAge: maxCacheAge,
+            namespace: namespace
         )
         let container = DependencyContainer(config: config)
         shared.withLock { shared._container = container }
@@ -63,16 +65,18 @@ public final class Gitrad {
 
     /// Returns a translated string, never throws.
     /// Falls back through: exact locale → base language → "en" → key itself.
+    /// When a `namespace` is configured, it is automatically prepended to `key`.
     public static func string(
         _ key: String,
         count: Int? = nil,
         language: String? = nil
     ) -> String {
         let lang = language ?? currentLanguage()
-        let (payload, resolve) = shared.withLock {
-            (shared._payload, shared._container?.resolve)
+        let (payload, resolve, namespace) = shared.withLock {
+            (shared._payload, shared._container?.resolve, shared._container?.namespace)
         }
-        return resolve?.execute(key: key, count: count, language: lang, in: payload) ?? key
+        let lookupKey = namespace.map { "\($0).\(key)" } ?? key
+        return resolve?.execute(key: lookupKey, count: count, language: lang, in: payload) ?? key
     }
 
     /// Register an event handler for observability (analytics, crash reporting).

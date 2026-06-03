@@ -36,4 +36,15 @@ final class GitradIntegrationTests: XCTestCase {
         // (We can't trigger an event externally, so just verify no crash.)
         XCTAssertEqual(callCount, 0)
     }
+
+    func test_string_with_namespace_returns_key_when_no_translations_loaded() {
+        Gitrad.configure(
+            apiKey: "test-key",
+            baseUrl: "https://localhost",
+            envName: "test-\(UUID().uuidString)",
+            namespace: "app"
+        )
+        // No translations loaded, so the fallback is the SHORT key (not the prefixed lookup key).
+        XCTAssertEqual(Gitrad.string("greeting.hello"), "greeting.hello")
+    }
 }

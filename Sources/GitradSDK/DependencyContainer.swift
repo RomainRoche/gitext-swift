@@ -7,6 +7,7 @@ import Data
 struct DependencyContainer {
     let repository: any TranslationRepository
     let maxCacheAge: TimeInterval
+    let namespace: String?
     let loadInitial: LoadInitialTranslationsUseCase
     let fetch: FetchTranslationsUseCase
     let resolve: ResolveTranslationUseCase
@@ -20,6 +21,7 @@ struct DependencyContainer {
         )
         repository = repo
         maxCacheAge = TimeInterval(config.maxCacheAge)
+        namespace = config.namespace
         loadInitial = LoadInitialTranslationsUseCase(repository: repo)
         fetch = FetchTranslationsUseCase(repository: repo)
         resolve = ResolveTranslationUseCase()
