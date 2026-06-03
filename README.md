@@ -23,6 +23,45 @@ targets: [
 ]
 ```
 
+## Key namespaces
+
+The Gitrad server prefixes every translation key with a namespace configured per translation file (e.g. `greeting.hello` → `app.greeting.hello`). How you handle namespaces in the SDK depends on your project structure:
+
+**Single translation file** — pass `namespace` to `configure()` and keep using short keys everywhere:
+
+```swift
+Gitrad.configure(apiKey: ..., baseUrl: ..., envName: ..., namespace: "app")
+Gitrad.string("greeting.hello")   // resolves "app.greeting.hello"
+```
+
+**Multiple translation files / monorepo packages** — leave `namespace: nil` (the default) in `configure()` and create a scoped accessor per package:
+
+```swift
+// In the Onboarding package
+private let strings = Gitrad.scoped(to: "onboarding")
+strings.string("welcome_title")            // resolves "onboarding.welcome_title"
+strings.string("step_count", count: 3)    // plural — resolves "onboarding.step_count"
+```
+
+```swift
+// In the Payments package
+private let strings = Gitrad.scoped(to: "payments")
+strings.string("checkout.confirm")        // resolves "payments.checkout.confirm"
+```
+
+For SwiftUI, pass `namespace` directly to `@GitradStrings`:
+
+```swift
+struct OnboardingView: View {
+    @GitradStrings(namespace: "onboarding") var strings
+    var body: some View { Text(strings["welcome_title"]) }
+}
+```
+
+Environments created before namespaces were introduced publish keys without a prefix — leave `namespace: nil` and use full keys as-is.
+
+---
+
 ## Setup
 
 ### 1. Get an API key
