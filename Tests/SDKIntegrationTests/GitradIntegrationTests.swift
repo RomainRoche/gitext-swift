@@ -10,7 +10,6 @@ final class GitradIntegrationTests: XCTestCase {
         Gitrad.configure(
             apiKey: "test-key",
             baseUrl: "https://localhost",
-            envName: "test-\(UUID().uuidString)",
             maxCacheAge: 3600
         )
     }
@@ -43,7 +42,6 @@ final class GitradIntegrationTests: XCTestCase {
         Gitrad.configure(
             apiKey: "test-key",
             baseUrl: "https://localhost",
-            envName: "test-\(UUID().uuidString)",
             namespace: "app"
         )
         // No translations loaded — fallback is the original short key, not the prefixed lookup key.

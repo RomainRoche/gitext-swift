@@ -31,6 +31,15 @@ final class ResolveTranslationUseCaseTests: XCTestCase {
         XCTAssertEqual(useCase.execute(key: "missing.key", count: nil, language: "en", in: .empty), "missing.key")
     }
 
+    func test_resolve_returns_nil_when_missing() {
+        XCTAssertNil(useCase.resolve(key: "missing.key", count: nil, language: "en", in: .empty))
+    }
+
+    func test_resolve_returns_value_when_found() {
+        let payload = TranslationPayload(translations: ["en": ["hello": .string("Hello")]])
+        XCTAssertEqual(useCase.resolve(key: "hello", count: nil, language: "en", in: payload), "Hello")
+    }
+
     func test_plural_resolution() {
         let payload = TranslationPayload(translations: [
             "en": [

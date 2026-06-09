@@ -30,9 +30,11 @@ The Gitrad server prefixes every translation key with a namespace configured per
 **Single translation file** — pass `namespace` to `configure()` and keep using short keys everywhere:
 
 ```swift
-Gitrad.configure(apiKey: ..., baseUrl: ..., envName: ..., namespace: "app")
+Gitrad.configure(apiKey: ..., baseUrl: ..., namespace: "app")
 Gitrad.string("greeting.hello")   // resolves "app.greeting.hello"
 ```
+
+If no translation is found under the prefixed key, the SDK automatically retries with the bare key. This lets you gradually roll out a namespace on an existing payload without updating every key at once.
 
 **Multiple translation files / monorepo packages** — leave `namespace: nil` (the default) in `configure()` and create a scoped accessor per package:
 
@@ -83,7 +85,6 @@ struct MyApp: App {
         Gitrad.configure(
             apiKey:      Secrets.gitradApiKey,     // environment-scoped API key
             baseUrl:     "https://app.gitrad.io",  // Gitrad server base URL
-            envName:     "production",             // used as the local cache namespace
             maxCacheAge: 3600                      // seconds before re-fetching; 0 = always
         )
         Task { await Gitrad.prefetch() }
@@ -178,12 +179,11 @@ struct ContentView: View {
 let key = isProduction ? Secrets.gitradKeyProd : Secrets.gitradKeyStaging
 Gitrad.configure(
     apiKey:  key,
-    baseUrl: "https://app.gitrad.io",
-    envName: isProduction ? "production" : "staging"
+    baseUrl: "https://app.gitrad.io"
 )
 ```
 
-`envName` is only used to namespace the local disk cache. It does not need to match the server-side environment name, though keeping them consistent avoids confusion.
+The local disk cache is automatically namespaced per API key, so switching between environments never causes cache collisions.
 
 ## Observability
 
@@ -248,5 +248,5 @@ Network failures are retried up to 4 times with exponential back-off (2 s → 4 
 | Layer | Location | Lifetime |
 |---|---|---|
 | In-memory | Process memory | Until the app is killed |
-| Disk cache | `Library/Caches/gitrad/{envName}/translations.json` | Until evicted by the OS or a fresh fetch |
+| Disk cache | `Library/Caches/gitrad/{apiKeyHash}/translations.json` | Until evicted by the OS or a fresh fetch |
 | Bundled baseline | `Resources/gitrad-baseline/translations.json` | Shipped with the binary |
