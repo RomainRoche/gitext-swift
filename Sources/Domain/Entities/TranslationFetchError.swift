@@ -1,3 +1,5 @@
+import Foundation
+
 package enum TranslationFetchError: Error {
     case unauthorized
     case subscriptionInactive

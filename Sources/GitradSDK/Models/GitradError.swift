@@ -1,4 +1,5 @@
 import Domain
+import Foundation
 
 public enum GitradError: Error {
     case unauthorized
