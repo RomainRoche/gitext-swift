@@ -16,7 +16,6 @@ struct DependencyContainer {
         let repo = TranslationRepositoryFactory.make(
             apiKey: config.apiKey,
             baseUrl: config.baseUrl,
-            envName: config.envName,
             bundle: Bundle.module
         )
         repository = repo

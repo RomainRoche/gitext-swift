@@ -65,9 +65,10 @@ GitradSDK → Domain            (direct, for use case types)
 
 **`string()` flow (synchronous, never throws):**
 - `ResolveTranslationUseCase` walks: exact locale → base language → `"en"` → key itself
+- `ResolveTranslationUseCase.resolve()` returns `String?` (nil = not found); `execute()` wraps it with a key fallback
 - For plurals, `count == 0` tries an explicit `"zero"` key before CLDR category selection
-- If `GitradConfig.namespace` is set, it is prepended to the key before lookup; the original short key is the fallback
-- `Gitrad.scoped(to:)` returns a `GitradNamespace` that prepends its prefix directly, bypassing the container namespace (the two are mutually exclusive — multi-namespace apps set `namespace: nil` in `configure()`)
+- If `GitradConfig.namespace` is set, it is prepended to the key before lookup; if not found, the lookup retries with the bare key, then falls back to the key itself
+- `Gitrad.scoped(to:)` returns a `GitradNamespace` that prepends its prefix directly, bypassing the container namespace (the two are mutually exclusive — multi-namespace apps set `namespace: nil` in `configure()`); same bare-key retry on miss
 - `GitradStore(namespace:)` and `@GitradStrings(namespace:)` use the same bypass; namespaced stores observe the shared store's `$revision` via a Combine sink so SwiftUI redraws still fire after a remote fetch
 
 ### Access control pattern
@@ -85,7 +86,7 @@ GitradSDK → Domain            (direct, for use case types)
 | Layer | Location | Tracked by |
 |---|---|---|
 | In-memory | `Gitrad._payload` | facade |
-| Disk | `Library/Caches/gitrad/{envName}/translations.json` | `LocalTranslationDataSource` |
+| Disk | `Library/Caches/gitrad/{apiKeyHash}/translations.json` | `LocalTranslationDataSource` |
 | Bundle | `Resources/gitrad-baseline/translations.json` | `BundleTranslationDataSource` |
 
 ### Architecture deviations to know about
@@ -95,3 +96,4 @@ GitradSDK → Domain            (direct, for use case types)
 - **`GitradError` in Presentation maps `Domain.TranslationFetchError`**: `GitradError(from:)` converts the package-internal `TranslationFetchError` to the public `GitradError` at the Presentation boundary.
 - **No data source protocols**: `RemoteTranslationDataSource`, `LocalTranslationDataSource`, and `BundleTranslationDataSource` are concrete final classes with no protocols. Testability is achieved by testing through `DefaultTranslationRepository` with `@testable import Data`.
 - **Namespace two-path design**: `Gitrad.string()` applies the container namespace (from `GitradConfig`). `GitradNamespace`, `GitradStore(namespace:)`, and `@GitradStrings(namespace:)` bypass the container namespace by calling the internal `Gitrad.string(prefixedKey:originalKey:count:language:)` helper directly. The two approaches are mutually exclusive — single-namespace apps use `configure(namespace:)`, multi-namespace apps leave it `nil` and use `scoped(to:)` per package.
+- **`envName` removed**: The `configure()` API no longer takes an `envName`. The local disk cache directory is named with an FNV-1a hash of the `apiKey` (computed inside `TranslationRepositoryFactory.cacheId(for:)`), which is deterministic across launches and unique per environment without exposing the raw key.

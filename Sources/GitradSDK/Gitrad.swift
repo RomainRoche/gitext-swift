@@ -28,14 +28,12 @@ public final class Gitrad {
     public static func configure(
         apiKey: String,
         baseUrl: String,
-        envName: String,
         maxCacheAge: Int = 3600,
         namespace: String? = nil
     ) {
         let config = GitradConfig(
             apiKey: apiKey,
             baseUrl: baseUrl,
-            envName: envName,
             maxCacheAge: maxCacheAge,
             namespace: namespace
         )
@@ -65,7 +63,8 @@ public final class Gitrad {
 
     /// Returns a translated string, never throws.
     /// Falls back through: exact locale → base language → "en" → key itself.
-    /// When a `namespace` is configured via `configure()`, it is automatically prepended to `key`.
+    /// When a `namespace` is configured via `configure()`, it is automatically prepended to `key`;
+    /// if no translation is found under the prefixed key, the lookup retries with the bare key.
     public static func string(
         _ key: String,
         count: Int? = nil,
@@ -75,8 +74,13 @@ public final class Gitrad {
         let (payload, resolve, namespace) = shared.withLock {
             (shared._payload, shared._container?.resolve, shared._container?.namespace)
         }
-        let lookupKey = namespace.map { "\($0).\(key)" } ?? key
-        return resolve?.execute(key: lookupKey, count: count, language: lang, in: payload) ?? key
+        guard let resolve else { return key }
+        if let namespace {
+            return resolve.resolve(key: "\(namespace).\(key)", count: count, language: lang, in: payload)
+                ?? resolve.resolve(key: key, count: count, language: lang, in: payload)
+                ?? key
+        }
+        return resolve.execute(key: key, count: count, language: lang, in: payload)
     }
 
     /// Returns a namespace-scoped accessor. Keys passed to the returned value are
@@ -96,12 +100,16 @@ public final class Gitrad {
     /// Resolves a pre-built lookup key, falling back to `originalKey`.
     /// Used by `GitradNamespace` and namespaced `GitradStore` to bypass the
     /// container-level namespace (which must be `nil` in multi-namespace setups).
+    /// If the prefixed key is not found, retries with the original bare key.
     static func string(prefixedKey: String, originalKey: String, count: Int?, language: String?) -> String {
         let lang = language ?? currentLanguage()
         let (payload, resolve) = shared.withLock {
             (shared._payload, shared._container?.resolve)
         }
-        return resolve?.execute(key: prefixedKey, count: count, language: lang, in: payload) ?? originalKey
+        guard let resolve else { return originalKey }
+        return resolve.resolve(key: prefixedKey, count: count, language: lang, in: payload)
+            ?? resolve.resolve(key: originalKey, count: count, language: lang, in: payload)
+            ?? originalKey
     }
 
     /// Returns the namespaces declared in the current payload via `_namespaces`, or an empty array.

@@ -1,13 +1,13 @@
 import Foundation
 
 final class LocalTranslationDataSource {
-    private let envName: String
+    private let cacheId: String
     private let fileManager = FileManager.default
     private let lock = NSLock()
     private var _lastSaveDate: Date?
 
-    init(envName: String) {
-        self.envName = envName
+    init(cacheId: String) {
+        self.cacheId = cacheId
     }
 
     func read() -> TranslationPayloadDTO? {
@@ -58,13 +58,13 @@ final class LocalTranslationDataSource {
         return attrs?[.modificationDate] as? Date
     }
 
-    // Library/Caches/gitrad/{envName}/translations.json
+    // Library/Caches/gitrad/{cacheId}/translations.json
     private func cachePath() -> URL? {
         fileManager
             .urls(for: .cachesDirectory, in: .userDomainMask)
             .first?
             .appendingPathComponent("gitrad", isDirectory: true)
-            .appendingPathComponent(envName, isDirectory: true)
+            .appendingPathComponent(cacheId, isDirectory: true)
             .appendingPathComponent("translations.json")
     }
 }

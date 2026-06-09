@@ -4,10 +4,10 @@ import XCTest
 final class LocalTranslationDataSourceTests: XCTestCase {
 
     private var source: LocalTranslationDataSource!
-    private let envName = "test-\(UUID().uuidString)"
+    private let cacheId = "test-\(UUID().uuidString)"
 
     override func setUp() {
-        source = LocalTranslationDataSource(envName: envName)
+        source = LocalTranslationDataSource(cacheId: cacheId)
     }
 
     override func tearDown() {
