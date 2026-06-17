@@ -58,12 +58,12 @@ final class LocalTranslationDataSource {
         return attrs?[.modificationDate] as? Date
     }
 
-    // Library/Caches/gitrad/{cacheId}/translations.json
+    // Library/Caches/gitext/{cacheId}/translations.json
     private func cachePath() -> URL? {
         fileManager
             .urls(for: .cachesDirectory, in: .userDomainMask)
             .first?
-            .appendingPathComponent("gitrad", isDirectory: true)
+            .appendingPathComponent("gitext", isDirectory: true)
             .appendingPathComponent(cacheId, isDirectory: true)
             .appendingPathComponent("translations.json")
     }

@@ -2,12 +2,12 @@ import Foundation
 import Combine
 
 /// Observable store that triggers SwiftUI redraws after a remote refresh.
-public final class GitradStore: ObservableObject {
+public final class GitextStore: ObservableObject {
     @Published public private(set) var revision: Int = 0
     private let namespace: String?
     private var refreshSink: AnyCancellable?
 
-    /// Shared store — created once by `Gitrad.shared`. No namespace applied.
+    /// Shared store — created once by `Gitext.shared`. No namespace applied.
     init() {
         self.namespace = nil
     }
@@ -17,7 +17,7 @@ public final class GitradStore: ObservableObject {
     /// from the shared store so SwiftUI redraws still fire after a remote fetch.
     public init(namespace: String) {
         self.namespace = namespace
-        refreshSink = Gitrad.shared.observableStore.$revision
+        refreshSink = Gitext.shared.observableStore.$revision
             .dropFirst()
             .sink { [weak self] value in
                 if Thread.isMainThread {
@@ -31,9 +31,9 @@ public final class GitradStore: ObservableObject {
     /// Look up a translated string for the current locale.
     public subscript(key: String) -> String {
         if let ns = namespace {
-            return Gitrad.string(prefixedKey: "\(ns).\(key)", originalKey: key, count: nil, language: nil)
+            return Gitext.string(prefixedKey: "\(ns).\(key)", originalKey: key, count: nil, language: nil)
         }
-        return Gitrad.string(key)
+        return Gitext.string(key)
     }
 
     func notifyRefresh() {

@@ -12,7 +12,7 @@ final class BundleTranslationDataSource {
             let url = bundle.url(
                 forResource: "translations",
                 withExtension: "json",
-                subdirectory: "gitrad-baseline"
+                subdirectory: "gitext-baseline"
             ),
             let data = try? Foundation.Data(contentsOf: url)
         else { return nil }

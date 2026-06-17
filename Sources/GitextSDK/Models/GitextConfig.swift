@@ -1,10 +1,10 @@
-public struct GitradConfig {
+public struct GitextConfig {
     public let apiKey: String
     public let baseUrl: String
     public let maxCacheAge: Int
     /// Key namespace configured for the translation file on this environment.
     /// When set, this prefix is automatically prepended to every key lookup:
-    /// `Gitrad.string("greeting.hello")` resolves `"<namespace>.greeting.hello"`.
+    /// `Gitext.string("greeting.hello")` resolves `"<namespace>.greeting.hello"`.
     /// Environments created before namespaces were introduced should leave this `nil`.
     public let namespace: String?
 
