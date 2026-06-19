@@ -1,7 +1,7 @@
 import Domain
 import Foundation
 
-public enum GitradError: Error {
+public enum GitextError: Error {
     case unauthorized
     case subscriptionInactive
     /// Rate limit hit — the SDK waited for `Retry-After` before retrying.
@@ -11,7 +11,7 @@ public enum GitradError: Error {
     case notConfigured
 }
 
-extension GitradError {
+extension GitextError {
     init(from error: Error) {
         guard let fetchError = error as? TranslationFetchError else {
             self = .networkError(error)

@@ -1,11 +1,11 @@
 import Foundation
 import Domain
 
-public final class Gitrad {
+public final class Gitext {
 
     // MARK: - Singleton
 
-    public static let shared = Gitrad()
+    public static let shared = Gitext()
     private init() {}
 
     // MARK: - State (lock-protected)
@@ -18,9 +18,9 @@ public final class Gitrad {
     private var _container: DependencyContainer?
     private var _payload: TranslationPayload = .empty
     private var _lastFetchDate: Date?
-    private var _eventHandler: ((GitradEvent) -> Void)?
+    private var _eventHandler: ((GitextEvent) -> Void)?
 
-    public let observableStore = GitradStore()
+    public let observableStore = GitextStore()
 
     // MARK: - Public API
 
@@ -31,7 +31,7 @@ public final class Gitrad {
         maxCacheAge: Int = 3600,
         namespace: String? = nil
     ) {
-        let config = GitradConfig(
+        let config = GitextConfig(
             apiKey: apiKey,
             baseUrl: baseUrl,
             maxCacheAge: maxCacheAge,
@@ -90,15 +90,15 @@ public final class Gitrad {
     /// Leave `namespace` as `nil` in `configure()` when using this API.
     ///
     /// ```swift
-    /// private let strings = Gitrad.scoped(to: "payments")
+    /// private let strings = Gitext.scoped(to: "payments")
     /// strings.string("checkout.confirm")   // resolves "payments.checkout.confirm"
     /// ```
-    public static func scoped(to namespace: String) -> GitradNamespace {
-        GitradNamespace(prefix: namespace)
+    public static func scoped(to namespace: String) -> GitextNamespace {
+        GitextNamespace(prefix: namespace)
     }
 
     /// Resolves a pre-built lookup key, falling back to `originalKey`.
-    /// Used by `GitradNamespace` and namespaced `GitradStore` to bypass the
+    /// Used by `GitextNamespace` and namespaced `GitextStore` to bypass the
     /// container-level namespace (which must be `nil` in multi-namespace setups).
     /// If the prefixed key is not found, retries with the original bare key.
     static func string(prefixedKey: String, originalKey: String, count: Int?, language: String?) -> String {
@@ -118,7 +118,7 @@ public final class Gitrad {
     }
 
     /// Register an event handler for observability (analytics, crash reporting).
-    public static func onEvent(_ handler: @escaping (GitradEvent) -> Void) {
+    public static func onEvent(_ handler: @escaping (GitextEvent) -> Void) {
         shared.withLock { shared._eventHandler = handler }
     }
 
@@ -144,7 +144,7 @@ public final class Gitrad {
             emit(.fetchSucceeded(languages: payload.translations.keys.count, ms: ms))
             observableStore.notifyRefresh()
         } catch {
-            emit(.fetchFailed(error: GitradError(from: error)))
+            emit(.fetchFailed(error: GitextError(from: error)))
         }
     }
 
@@ -178,7 +178,7 @@ public final class Gitrad {
         return block()
     }
 
-    private func emit(_ event: GitradEvent) {
+    private func emit(_ event: GitextEvent) {
         let handler = withLock { _eventHandler }
         handler?(event)
     }

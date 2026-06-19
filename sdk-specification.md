@@ -1,4 +1,4 @@
-# Gitrad OTA Client SDK Specification
+# Gitext OTA Client SDK Specification
 
 > Version 2.0 — 2026-05-21
 
@@ -6,13 +6,13 @@
 
 ## Overview
 
-Gitrad publishes translation snapshots to Firebase Storage. Client SDKs download a single pre-built JSON file per environment — they never talk to GitHub or parse raw `.strings` / `.xml` / `.po` files directly. All format conversion and language filtering happen server-side at publish time.
+Gitext publishes translation snapshots to Firebase Storage. Client SDKs download a single pre-built JSON file per environment — they never talk to GitHub or parse raw `.strings` / `.xml` / `.po` files directly. All format conversion and language filtering happen server-side at publish time.
 
 ### Roles
 
 | Actor | Responsibility |
 |-------|---------------|
-| **Gitrad server** | Fetches from GitHub, parses formats, builds OTA JSON, uploads to Firebase Storage |
+| **Gitext server** | Fetches from GitHub, parses formats, builds OTA JSON, uploads to Firebase Storage |
 | **Client SDK** | Downloads the OTA JSON via a signed URL, caches it, looks up strings at runtime |
 
 ---
@@ -82,13 +82,13 @@ The SDK selects the right plural form from the nested object using the locale's 
 
 ```swift
 // Swift
-let text = Gitrad.string("notifications.count", count: 3)
+let text = Gitext.string("notifications.count", count: 3)
 // → "3 notifications"
 ```
 
 ```kotlin
 // Kotlin
-val text = Gitrad.string("notifications.count", count = 3)
+val text = Gitext.string("notifications.count", count = 3)
 // → "3 notifications"
 ```
 
@@ -142,8 +142,8 @@ The SDK must follow the redirect automatically (standard HTTP client behaviour) 
 | App cold start | Fetch before the first screen if no valid cache; otherwise serve cache then refresh in background |
 | App foreground resume | Refresh if cached payload is older than `maxCacheAge` (default 1 h) |
 | Signed URL expired | Re-request the download endpoint to get a new signed URL; then fetch again |
-| Manual | `Gitrad.refresh()` |
-| Push notification | Custom APNs / FCM payload `{ "gitrad_refresh": true }` triggers `Gitrad.refresh()` |
+| Manual | `Gitext.refresh()` |
+| Push notification | Custom APNs / FCM payload `{ "gitext_refresh": true }` triggers `Gitext.refresh()` |
 
 Cold-start strategy: render with the bundled baseline immediately; swap to the downloaded payload once it resolves, without blocking the UI.
 
@@ -163,8 +163,8 @@ Cache file locations:
 
 | Platform | Path |
 |----------|------|
-| iOS | `Library/Caches/gitrad/{envName}/translations.json` |
-| Android | `context.cacheDir/gitrad/{envName}/translations.json` |
+| iOS | `Library/Caches/gitext/{envName}/translations.json` |
+| Android | `context.cacheDir/gitext/{envName}/translations.json` |
 
 ### 3.5 Retry and back-off
 
@@ -176,12 +176,12 @@ On network failure, retry up to **4 times** with exponential back-off: 2 s → 4
 
 ### 4.1 How environments work
 
-Environments are configured entirely server-side in the Gitrad dashboard:
+Environments are configured entirely server-side in the Gitext dashboard:
 
 | Setting | Where configured | Example |
 |---------|-----------------|---------|
-| GitHub branch / tag | Gitrad dashboard | `main`, `v2.3.1` |
-| Language filter | Gitrad dashboard | `["en", "fr", "de"]`; empty = all |
+| GitHub branch / tag | Gitext dashboard | `main`, `v2.3.1` |
+| Language filter | Gitext dashboard | `["en", "fr", "de"]`; empty = all |
 | Storage path | Auto-generated | `ota/{workspaceId}/{appId}/{envId}/translations.json` |
 
 The client SDK knows nothing about branches or repos. It only needs an API key.
@@ -199,9 +199,9 @@ Create separate keys for each release channel (production, staging, QA) so they 
 
 ```swift
 // Swift — call once at app launch
-Gitrad.configure(
-    apiKey:      Secrets.gitradApiKey,     // environment-scoped API key
-    baseUrl:     "https://app.gitrad.io",  // Gitrad server base URL
+Gitext.configure(
+    apiKey:      Secrets.gitextApiKey,     // environment-scoped API key
+    baseUrl:     "https://app.gitext.io",  // Gitext server base URL
     envName:     "production",             // used as local cache namespace only
     maxCacheAge: 3600                      // seconds before re-fetching; 0 = always
 )
@@ -209,10 +209,10 @@ Gitrad.configure(
 
 ```kotlin
 // Kotlin — Application.onCreate()
-Gitrad.configure(
+Gitext.configure(
     context     = this,
-    apiKey      = BuildConfig.GITRAD_API_KEY,
-    baseUrl     = "https://app.gitrad.io",
+    apiKey      = BuildConfig.GITEXT_API_KEY,
+    baseUrl     = "https://app.gitext.io",
     envName     = "production",
     maxCacheAge = 3600L
 )
@@ -223,12 +223,12 @@ Gitrad.configure(
 ### 4.4 Multiple environments in one binary
 
 ```kotlin
-val env = when (RemoteConfig.getString("gitrad_env")) {
-    "production" -> GitradConfig(apiKey = BuildConfig.GITRAD_KEY_PROD, envName = "production")
-    "staging"    -> GitradConfig(apiKey = BuildConfig.GITRAD_KEY_STAGING, envName = "staging")
-    else         -> GitradConfig(apiKey = BuildConfig.GITRAD_KEY_DEV, envName = "dev")
+val env = when (RemoteConfig.getString("gitext_env")) {
+    "production" -> GitextConfig(apiKey = BuildConfig.GITEXT_KEY_PROD, envName = "production")
+    "staging"    -> GitextConfig(apiKey = BuildConfig.GITEXT_KEY_STAGING, envName = "staging")
+    else         -> GitextConfig(apiKey = BuildConfig.GITEXT_KEY_DEV, envName = "dev")
 }
-Gitrad.configure(context = this, config = env, baseUrl = "https://app.gitrad.io")
+Gitext.configure(context = this, config = env, baseUrl = "https://app.gitext.io")
 ```
 
 ### 4.5 Key security
@@ -245,18 +245,18 @@ Gitrad.configure(context = this, config = env, baseUrl = "https://app.gitrad.io"
 ### 5.1 Initialisation
 
 ```swift
-import GitradSDK
+import GitextSwift
 
 @main
 struct MyApp: App {
     init() {
-        Gitrad.configure(
-            apiKey:      Secrets.gitradApiKey,
-            baseUrl:     "https://app.gitrad.io",
+        Gitext.configure(
+            apiKey:      Secrets.gitextApiKey,
+            baseUrl:     "https://app.gitext.io",
             envName:     "production",
             maxCacheAge: 3600
         )
-        Task { await Gitrad.prefetch() }
+        Task { await Gitext.prefetch() }
     }
 
     var body: some Scene { WindowGroup { RootView() } }
@@ -267,14 +267,14 @@ struct MyApp: App {
 
 ```swift
 // Simple key
-let title = Gitrad.string("onboarding.welcome_title")
+let title = Gitext.string("onboarding.welcome_title")
 
 // With interpolation (SDK returns the format string; app does substitution)
-let raw   = Gitrad.string("greeting.welcome")      // "Welcome, %@!"
+let raw   = Gitext.string("greeting.welcome")      // "Welcome, %@!"
 let final = String(format: raw, user.firstName)
 
 // Plural
-let badge = Gitrad.string("notifications.count", count: unreadCount)
+let badge = Gitext.string("notifications.count", count: unreadCount)
 // count: 0 → "No notifications"
 // count: 1 → "1 notification"
 // count: 5 → "5 notifications"
@@ -285,7 +285,7 @@ let badge = Gitrad.string("notifications.count", count: unreadCount)
 ```swift
 // Property wrapper — redraws on remote refresh
 struct ContentView: View {
-    @GitradStrings var strings
+    @GitextStrings var strings
 
     var body: some View {
         Text(strings["onboarding.welcome_title"])
@@ -293,31 +293,31 @@ struct ContentView: View {
 }
 
 @propertyWrapper
-struct GitradStrings: DynamicProperty {
-    @StateObject private var store = Gitrad.shared.observableStore
-    var wrappedValue: GitradStore { store }
+struct GitextStrings: DynamicProperty {
+    @StateObject private var store = Gitext.shared.observableStore
+    var wrappedValue: GitextStore { store }
 }
 
-final class GitradStore: ObservableObject {
+final class GitextStore: ObservableObject {
     @Published private(set) var revision: Int = 0
 
     subscript(key: String) -> String {
-        Gitrad.shared.resolve(key: key)
+        Gitext.shared.resolve(key: key)
     }
 }
 ```
 
-### 5.4 GitradSDK core (abbreviated)
+### 5.4 GitextSwift core (abbreviated)
 
 ```swift
-public final class Gitrad {
-    public static let shared = Gitrad()
-    private var config: GitradConfig!
+public final class Gitext {
+    public static let shared = Gitext()
+    private var config: GitextConfig!
     private var payload: OTAPayload = [:]          // [language: [key: Entry]]
-    let observableStore = GitradStore()
+    let observableStore = GitextStore()
 
     public static func configure(apiKey: String, baseUrl: String, envName: String, maxCacheAge: Int) {
-        shared.config  = GitradConfig(apiKey: apiKey, baseUrl: baseUrl, envName: envName, maxCacheAge: maxCacheAge)
+        shared.config  = GitextConfig(apiKey: apiKey, baseUrl: baseUrl, envName: envName, maxCacheAge: maxCacheAge)
         shared.payload = DiskCache.read(envName: envName) ?? BundleBaseline.load()
     }
 
@@ -333,7 +333,7 @@ public final class Gitrad {
     private func fetch() async {
         do {
             // Step 1: exchange API key for a signed URL
-            let signedUrl = try await GitradClient(config: config).downloadUrl()
+            let signedUrl = try await GitextClient(config: config).downloadUrl()
             // Step 2: download the translations payload
             let data      = try await URLSession.shared.data(from: signedUrl).0
             let newPayload = try JSONDecoder().decode(OTAPayload.self, from: data)
@@ -366,7 +366,7 @@ public final class Gitrad {
 
 ```swift
 .onChange(of: scenePhase) { phase in
-    if phase == .active { Task { await Gitrad.refresh() } }
+    if phase == .active { Task { await Gitext.refresh() } }
 }
 ```
 
@@ -380,14 +380,14 @@ public final class Gitrad {
 class MyApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        Gitrad.configure(
+        Gitext.configure(
             context     = this,
-            apiKey      = BuildConfig.GITRAD_API_KEY,
-            baseUrl     = "https://app.gitrad.io",
+            apiKey      = BuildConfig.GITEXT_API_KEY,
+            baseUrl     = "https://app.gitext.io",
             envName     = "production",
             maxCacheAge = 3600L
         )
-        lifecycleScope.launch { Gitrad.prefetch() }
+        lifecycleScope.launch { Gitext.prefetch() }
     }
 }
 ```
@@ -396,43 +396,43 @@ class MyApplication : Application() {
 
 ```kotlin
 // Simple key
-val title = Gitrad.string("onboarding.welcome_title")
+val title = Gitext.string("onboarding.welcome_title")
 
 // With interpolation
-val template = Gitrad.string("greeting.welcome")    // "Welcome, %s!"
+val template = Gitext.string("greeting.welcome")    // "Welcome, %s!"
 val final    = String.format(template, user.firstName)
 
 // Plural
-val badge = Gitrad.string("notifications.count", count = unreadCount)
+val badge = Gitext.string("notifications.count", count = unreadCount)
 ```
 
 ### 6.3 Compose integration
 
 ```kotlin
 @Composable
-fun rememberGitradString(key: String, count: Int? = null): String {
-    val revision by Gitrad.revisionFlow.collectAsState()
-    return remember(revision, key, count) { Gitrad.string(key, count = count) }
+fun rememberGitextString(key: String, count: Int? = null): String {
+    val revision by Gitext.revisionFlow.collectAsState()
+    return remember(revision, key, count) { Gitext.string(key, count = count) }
 }
 
 @Composable
 fun WelcomeScreen() {
-    val title = rememberGitradString("onboarding.welcome_title")
+    val title = rememberGitextString("onboarding.welcome_title")
     Text(text = title)
 }
 ```
 
-### 6.4 GitradSDK core (abbreviated)
+### 6.4 GitextSwift core (abbreviated)
 
 ```kotlin
-object Gitrad {
-    private lateinit var config: GitradConfig
+object Gitext {
+    private lateinit var config: GitextConfig
     private var payload: OTAPayload = emptyMap()    // Map<lang, Map<key, Entry>>
     private val _revisionFlow = MutableStateFlow(0)
     val revisionFlow: StateFlow<Int> = _revisionFlow
 
     fun configure(context: Context, apiKey: String, baseUrl: String, envName: String, maxCacheAge: Long) {
-        config  = GitradConfig(context, apiKey, baseUrl, envName, maxCacheAge)
+        config  = GitextConfig(context, apiKey, baseUrl, envName, maxCacheAge)
         payload = DiskCache.read(context, envName) ?: BundleBaseline.load(context)
     }
 
@@ -455,9 +455,9 @@ object Gitrad {
     private suspend fun fetch() {
         runCatching {
             // Step 1: exchange API key for a signed URL
-            val signedUrl  = GitradClient(config).downloadUrl()
+            val signedUrl  = GitextClient(config).downloadUrl()
             // Step 2: download the translations payload
-            val newPayload = GitradClient(config).download(signedUrl)
+            val newPayload = GitextClient(config).download(signedUrl)
             payload = newPayload
             DiskCache.write(config.context, config.envName, newPayload)
             _revisionFlow.update { it + 1 }
@@ -473,21 +473,21 @@ object Gitrad {
 // Activity
 override fun onResume() {
     super.onResume()
-    lifecycleScope.launch { Gitrad.refresh() }
+    lifecycleScope.launch { Gitext.refresh() }
 }
 ```
 
 Background refresh with WorkManager:
 
 ```kotlin
-val work = PeriodicWorkRequestBuilder<GitradRefreshWorker>(1, TimeUnit.HOURS)
+val work = PeriodicWorkRequestBuilder<GitextRefreshWorker>(1, TimeUnit.HOURS)
     .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
     .build()
 WorkManager.getInstance(context)
-    .enqueueUniquePeriodicWork("gitrad_refresh", ExistingPeriodicWorkPolicy.KEEP, work)
+    .enqueueUniquePeriodicWork("gitext_refresh", ExistingPeriodicWorkPolicy.KEEP, work)
 
-class GitradRefreshWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
-    override suspend fun doWork(): Result { Gitrad.refresh(); return Result.success() }
+class GitextRefreshWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
+    override suspend fun doWork(): Result { Gitext.refresh(); return Result.success() }
 }
 ```
 
@@ -513,13 +513,13 @@ The SDK resolves a string using this waterfall:
 | Scenario | SDK behaviour |
 |----------|--------------|
 | No network | Serve disk cache or bundle; schedule retry with back-off |
-| HTTP 401 from download endpoint | Log; surface `GitradError.unauthorized`; serve cache |
-| HTTP 403 from download endpoint | Log `GitradError.subscriptionInactive`; serve cache |
+| HTTP 401 from download endpoint | Log; surface `GitextError.unauthorized`; serve cache |
+| HTTP 403 from download endpoint | Log `GitextError.subscriptionInactive`; serve cache |
 | Signed URL expired (403 from Storage) | Re-request download endpoint for a new signed URL, then retry once |
 | Malformed JSON payload | Discard; keep previous cache; log parse error |
 | Disk cache corrupt | Delete cache entry; fall back to bundle |
 
-`Gitrad.string()` always returns a `String`. It never throws.
+`Gitext.string()` always returns a `String`. It never throws.
 
 ---
 
@@ -527,7 +527,7 @@ The SDK resolves a string using this waterfall:
 
 - API keys are environment-scoped and read-only. A leaked key allows downloading translations for that environment only — it cannot publish, modify, or access other environments.
 - Never commit API keys to source control. Deliver via CI build variables or remote config.
-- Rotate by creating a new key in the Gitrad dashboard, deploying, then revoking the old key.
+- Rotate by creating a new key in the Gitext dashboard, deploying, then revoking the old key.
 - The SDK validates JSON structure before evicting the current cache to prevent a malformed publish from breaking the app.
 - Do not log API keys or raw payload contents in production builds.
 
@@ -536,13 +536,13 @@ The SDK resolves a string using this waterfall:
 ## 10. Observability
 
 ```swift
-Gitrad.onEvent { event in
+Gitext.onEvent { event in
     switch event {
-    case .fetchStarted:                                analytics.track("gitrad_fetch_started")
-    case .fetchSucceeded(languages: let n, ms: let t): analytics.track("gitrad_fetch_ok", ["langs": n, "ms": t])
+    case .fetchStarted:                                analytics.track("gitext_fetch_started")
+    case .fetchSucceeded(languages: let n, ms: let t): analytics.track("gitext_fetch_ok", ["langs": n, "ms": t])
     case .fetchFailed(error: let e):                   Crashlytics.record(error: e)
     case .cacheHit:                                    break
-    case .bundleFallback:                              analytics.track("gitrad_bundle_fallback")
+    case .bundleFallback:                              analytics.track("gitext_bundle_fallback")
     }
 }
 ```
@@ -562,15 +562,15 @@ Ship a snapshot of the production translations inside the app bundle. The SDK re
 
 Update the bundled baseline as part of each release:
 
-1. Trigger a publish in the Gitrad dashboard for the production environment.
+1. Trigger a publish in the Gitext dashboard for the production environment.
 2. CI calls `GET /api/ota/download` with the production API key and saves the response.
 3. The saved `translations.json` is committed to the bundle resources directory.
 
 Recommended paths:
 
 ```
-iOS       Resources/gitrad-baseline/translations.json
-Android   assets/gitrad-baseline/translations.json
+iOS       Resources/gitext-baseline/translations.json
+Android   assets/gitext-baseline/translations.json
 ```
 
 ---
@@ -583,18 +583,18 @@ Android   assets/gitrad-baseline/translations.json
 | Publish translations | Pro tier |
 | Download via API key | Active or trialing subscription |
 
-If `GET /api/ota/download` returns 403, the workspace subscription has lapsed. The SDK surfaces `GitradError.subscriptionInactive` via the observability event handler and continues serving cached strings.
+If `GET /api/ota/download` returns 403, the workspace subscription has lapsed. The SDK surfaces `GitextError.subscriptionInactive` via the observability event handler and continues serving cached strings.
 
 ---
 
 ## Appendix B — Minimal Integration Checklist
 
-- [ ] API key created in Gitrad dashboard for each environment (production, staging, dev)
+- [ ] API key created in Gitext dashboard for each environment (production, staging, dev)
 - [ ] Keys delivered via CI build variables, not committed to source control
-- [ ] `Gitrad.configure()` called before any `Gitrad.string()` call
+- [ ] `Gitext.configure()` called before any `Gitext.string()` call
 - [ ] `prefetch()` called at app launch before first screen render
-- [ ] Foreground resume triggers `Gitrad.refresh()`
-- [ ] Push notification handler wired to `Gitrad.refresh()`
+- [ ] Foreground resume triggers `Gitext.refresh()`
+- [ ] Push notification handler wired to `Gitext.refresh()`
 - [ ] Background refresh scheduled (WorkManager / BGAppRefreshTask)
 - [ ] Bundled baseline `translations.json` included in app bundle and kept up to date
 - [ ] Observability events forwarded to analytics / crash reporting

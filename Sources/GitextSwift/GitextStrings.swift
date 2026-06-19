@@ -6,7 +6,7 @@ import SwiftUI
 /// **Single namespace** (or no namespace):
 /// ```swift
 /// struct ContentView: View {
-///     @GitradStrings var strings
+///     @GitextStrings var strings
 ///     var body: some View { Text(strings["onboarding.welcome_title"]) }
 /// }
 /// ```
@@ -14,24 +14,24 @@ import SwiftUI
 /// **Per-package namespace** (multi-package apps):
 /// ```swift
 /// struct OnboardingView: View {
-///     @GitradStrings(namespace: "onboarding") var strings
+///     @GitextStrings(namespace: "onboarding") var strings
 ///     var body: some View { Text(strings["welcome_title"]) }
 /// }
 /// ```
 @propertyWrapper
-public struct GitradStrings: DynamicProperty {
-    @ObservedObject private var store: GitradStore
+public struct GitextStrings: DynamicProperty {
+    @ObservedObject private var store: GitextStore
 
     public init() {
-        _store = ObservedObject(wrappedValue: Gitrad.shared.observableStore)
+        _store = ObservedObject(wrappedValue: Gitext.shared.observableStore)
     }
 
     /// Creates a namespace-scoped property wrapper. Keys are automatically prefixed
     /// with `namespace` before lookup; use this in packages that own a specific namespace.
     public init(namespace: String) {
-        _store = ObservedObject(wrappedValue: GitradStore(namespace: namespace))
+        _store = ObservedObject(wrappedValue: GitextStore(namespace: namespace))
     }
 
-    public var wrappedValue: GitradStore { store }
+    public var wrappedValue: GitextStore { store }
 }
 #endif

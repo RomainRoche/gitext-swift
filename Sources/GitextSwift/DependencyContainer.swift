@@ -3,7 +3,7 @@ import Domain
 import Data
 
 /// Composition root: wires every dependency from the outside in.
-/// Created once per `Gitrad.configure()` call; never mutated afterwards.
+/// Created once per `Gitext.configure()` call; never mutated afterwards.
 struct DependencyContainer {
     let repository: any TranslationRepository
     let maxCacheAge: TimeInterval
@@ -12,7 +12,7 @@ struct DependencyContainer {
     let fetch: FetchTranslationsUseCase
     let resolve: ResolveTranslationUseCase
 
-    init(config: GitradConfig) {
+    init(config: GitextConfig) {
         let repo = TranslationRepositoryFactory.make(
             apiKey: config.apiKey,
             baseUrl: config.baseUrl,
