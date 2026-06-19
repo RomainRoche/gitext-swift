@@ -13,7 +13,7 @@ swift test --filter DomainTests/PluralRulesTests/test_russian  # run a single te
 
 ## Architecture — Clean Architecture with three SPM targets
 
-Only `GitextSDK` is a public library product. `Domain` and `Data` are internal targets; consumers cannot import them.
+Only `GitextSwift` is a public library product. `Domain` and `Data` are internal targets; consumers cannot import them.
 
 ```
 Sources/
@@ -28,7 +28,7 @@ Sources/
     DataSources/   ← RemoteTranslationDataSource, LocalTranslationDataSource, BundleTranslationDataSource (internal)
     Repositories/  ← DefaultTranslationRepository (internal)
     TranslationRepositoryFactory.swift  ← only package-visible entry point into Data
-  GitextSDK/       ← Presentation (public API). Depends on Domain + Data.
+  GitextSwift/       ← Presentation (public API). Depends on Domain + Data.
     Gitext.swift           ← public facade + singleton
     DependencyContainer.swift  ← composition root (internal struct)
     GitextStore.swift      ← ObservableObject for SwiftUI; supports optional namespace
@@ -38,14 +38,14 @@ Sources/
 Tests/
   DomainTests/     ← imports Domain directly (package access, no @testable needed)
   DataTests/       ← @testable import Data (accesses internal types)
-  SDKIntegrationTests/  ← import GitextSDK (public API only)
+  SDKIntegrationTests/  ← import GitextSwift (public API only)
 ```
 
 ### Dependency rule
 
 ```
-GitextSDK → Data → Domain     (only direction allowed)
-GitextSDK → Domain            (direct, for use case types)
+GitextSwift → Data → Domain     (only direction allowed)
+GitextSwift → Domain            (direct, for use case types)
 ```
 
 ### Key data flow
@@ -75,7 +75,7 @@ GitextSDK → Domain            (direct, for use case types)
 
 - `Domain` types: `package` — visible within the package, invisible to consumers
 - `Data` concrete types: `internal` — invisible even within the package; only `TranslationRepositoryFactory` is `package`
-- `GitextSDK` public API: `public` — consumers see only these types
+- `GitextSwift` public API: `public` — consumers see only these types
 
 ### Thread safety
 

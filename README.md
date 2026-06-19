@@ -1,4 +1,4 @@
-# GitextSDK
+# GitextSwift
 
 Swift client SDK for [Gitext](https://app.gitext.io) OTA translations. Downloads a pre-built JSON payload from Firebase Storage, caches it on disk, and provides synchronous string lookup with plural support and SwiftUI integration.
 
@@ -19,7 +19,7 @@ dependencies: [
     .package(url: "https://github.com/romainroche/gitext-swift", from: "1.0.0")
 ],
 targets: [
-    .target(name: "MyApp", dependencies: ["GitextSDK"])
+    .target(name: "MyApp", dependencies: ["GitextSwift"])
 ]
 ```
 
@@ -77,7 +77,7 @@ Never commit keys to source control — deliver them via CI build variables or a
 Call `Gitext.configure()` once, before any string lookup. Then kick off a background prefetch so the latest translations are ready for the first screen.
 
 ```swift
-import GitextSDK
+import GitextSwift
 
 @main
 struct MyApp: App {
@@ -159,7 +159,7 @@ let frenchTitle = Gitext.string("onboarding.welcome_title", language: "fr")
 Use the `@GitextStrings` property wrapper to have your view automatically redraw whenever remote translations are refreshed:
 
 ```swift
-import GitextSDK
+import GitextSwift
 
 struct ContentView: View {
     @GitextStrings var strings

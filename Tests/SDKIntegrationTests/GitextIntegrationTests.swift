@@ -1,5 +1,5 @@
 import XCTest
-import GitextSDK
+import GitextSwift
 
 /// Tests the public SDK surface without @testable.
 /// Network calls will fail in CI — these tests verify the public API contract only.

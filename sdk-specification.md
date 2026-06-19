@@ -245,7 +245,7 @@ Gitext.configure(context = this, config = env, baseUrl = "https://app.gitext.io"
 ### 5.1 Initialisation
 
 ```swift
-import GitextSDK
+import GitextSwift
 
 @main
 struct MyApp: App {
@@ -307,7 +307,7 @@ final class GitextStore: ObservableObject {
 }
 ```
 
-### 5.4 GitextSDK core (abbreviated)
+### 5.4 GitextSwift core (abbreviated)
 
 ```swift
 public final class Gitext {
@@ -422,7 +422,7 @@ fun WelcomeScreen() {
 }
 ```
 
-### 6.4 GitextSDK core (abbreviated)
+### 6.4 GitextSwift core (abbreviated)
 
 ```kotlin
 object Gitext {

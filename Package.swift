@@ -2,25 +2,25 @@
 import PackageDescription
 
 let package = Package(
-    name: "GitextSDK",
+    name: "GitextSwift",
     platforms: [
         .iOS(.v16),
         .macOS(.v13),
     ],
     products: [
-        // Only GitextSDK is a public product. Domain and Data are internal targets.
-        .library(name: "GitextSDK", targets: ["GitextSDK"]),
+        // Only GitextSwift is a public product. Domain and Data are internal targets.
+        .library(name: "GitextSwift", targets: ["GitextSwift"]),
     ],
     targets: [
         .target(name: "Domain"),
         .target(name: "Data", dependencies: ["Domain"]),
         .target(
-            name: "GitextSDK",
+            name: "GitextSwift",
             dependencies: ["Domain", "Data"],
             resources: [.process("Resources")]
         ),
         .testTarget(name: "DomainTests", dependencies: ["Domain"]),
         .testTarget(name: "DataTests", dependencies: ["Data"]),
-        .testTarget(name: "SDKIntegrationTests", dependencies: ["GitextSDK"]),
+        .testTarget(name: "SDKIntegrationTests", dependencies: ["GitextSwift"]),
     ]
 )
