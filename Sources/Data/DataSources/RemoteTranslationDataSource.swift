@@ -10,13 +10,13 @@ final class RemoteTranslationDataSource {
         self.baseUrl = baseUrl
     }
 
-    func fetch() async throws -> TranslationPayloadDTO {
+    func fetchRaw() async throws -> (dto: TranslationPayloadDTO, raw: Foundation.Data) {
         let backoffDelays: [UInt64] = [2, 4, 8, 16].map { $0 * 1_000_000_000 }
         var lastError: Error = TranslationFetchError.network(URLError(.unknown))
 
         for attempt in 0..<5 {
             do {
-                return try await performFetch()
+                return try await performFetchRaw()
             } catch TranslationFetchError.unauthorized {
                 throw TranslationFetchError.unauthorized
             } catch TranslationFetchError.subscriptionInactive {
@@ -37,8 +37,12 @@ final class RemoteTranslationDataSource {
         throw lastError
     }
 
-    // Single authenticated request — URLSession follows the 302 redirect automatically.
-    private func performFetch() async throws -> TranslationPayloadDTO {
+    func fetch() async throws -> TranslationPayloadDTO {
+        let (dto, _) = try await fetchRaw()
+        return dto
+    }
+
+    private func performFetchRaw() async throws -> (dto: TranslationPayloadDTO, raw: Foundation.Data) {
         let base = baseUrl.trimmingCharacters(in: .init(charactersIn: "/"))
         guard let url = URL(string: base + "/api/ota/download") else {
             throw TranslationFetchError.network(URLError(.badURL))
@@ -57,7 +61,8 @@ final class RemoteTranslationDataSource {
         switch http.statusCode {
         case 200..<300:
             do {
-                return try JSONDecoder().decode(TranslationPayloadDTO.self, from: data)
+                let dto = try JSONDecoder().decode(TranslationPayloadDTO.self, from: data)
+                return (dto, data)
             } catch {
                 throw TranslationFetchError.parse(error)
             }

@@ -19,6 +19,8 @@ public final class Gitext {
     private var _payload: TranslationPayload = .empty
     private var _lastFetchDate: Date?
     private var _eventHandler: ((GitextEvent) -> Void)?
+    private var _cachedLanguage: String?
+    private var _localeObserver: NSObjectProtocol?
 
     public let observableStore = GitextStore()
 
@@ -38,15 +40,35 @@ public final class Gitext {
             namespace: namespace
         )
         let container = DependencyContainer(config: config)
-        shared.withLock { shared._container = container }
 
-        let (payload, source) = container.loadInitial.execute()
-        shared.withLock { shared._payload = payload }
+        let observer = NotificationCenter.default.addObserver(
+            forName: NSLocale.currentLocaleDidChangeNotification,
+            object: nil,
+            queue: nil
+        ) { _ in
+            shared.withLock {
+                shared._cachedLanguage = nil
+            }
+            ResolveTranslationUseCase.clearBaseLangCache()
+        }
 
-        switch source {
-        case .cache:  shared.emit(.cacheHit)
-        case .bundle: shared.emit(.bundleFallback)
-        case .empty:  break
+        shared.withLock {
+            shared._container = container
+            shared._cachedLanguage = nil
+            // Retain new observer, releasing old one outside the lock below.
+            let old = shared._localeObserver
+            shared._localeObserver = observer
+            _ = old  // released after withLock returns
+        }
+
+        Task.detached(priority: .userInitiated) {
+            let (payload, source) = container.loadInitial.execute()
+            shared.withLock { shared._payload = payload }
+            switch source {
+            case .cache:  shared.emit(.cacheHit)
+            case .bundle: shared.emit(.bundleFallback)
+            case .empty:  break
+            }
         }
     }
 
@@ -184,11 +206,13 @@ public final class Gitext {
     }
 
     private static func currentLanguage() -> String {
-        let lang = Locale.current.language
-        var code = lang.languageCode?.identifier ?? "en"
-        if let region = lang.region?.identifier {
-            code += "-\(region)"
+        shared.withLock {
+            if let cached = shared._cachedLanguage { return cached }
+            let lang = Locale.current.language
+            var code = lang.languageCode?.identifier ?? "en"
+            if let region = lang.region?.identifier { code += "-\(region)" }
+            shared._cachedLanguage = code
+            return code
         }
-        return code
     }
 }

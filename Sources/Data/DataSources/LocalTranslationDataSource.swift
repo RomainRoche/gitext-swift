@@ -25,6 +25,21 @@ final class LocalTranslationDataSource {
         return nil
     }
 
+    func writeRaw(_ data: Foundation.Data) {
+        lock.withLock { _lastSaveDate = Date() }
+
+        guard let path = cachePath() else { return }
+        do {
+            try fileManager.createDirectory(
+                at: path.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try data.write(to: path, options: .atomic)
+        } catch {
+            // Non-fatal: in-memory payload continues to serve strings.
+        }
+    }
+
     func write(_ dto: TranslationPayloadDTO) {
         // Update in-memory date before the disk write so that a failed write
         // still marks the cache as fresh and avoids an infinite retry loop.

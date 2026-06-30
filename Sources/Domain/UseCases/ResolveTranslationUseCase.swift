@@ -1,5 +1,14 @@
+import Foundation
+
 package struct ResolveTranslationUseCase {
+    private static let baseLangLock = NSLock()
+    private static var baseLangCache: [String: String] = [:]
+
     package init() {}
+
+    package static func clearBaseLangCache() {
+        baseLangLock.withLock { baseLangCache.removeAll() }
+    }
 
     /// Resolves a translation key, returning `nil` if not found in the payload.
     package func resolve(key: String, count: Int?, language: String, in payload: TranslationPayload) -> String? {
@@ -25,7 +34,14 @@ package struct ResolveTranslationUseCase {
     }
 
     private func baseLang(_ lang: String) -> String {
-        guard let idx = lang.firstIndex(of: "-") else { return lang }
-        return String(lang[..<idx])
+        if let cached = Self.baseLangLock.withLock({ Self.baseLangCache[lang] }) { return cached }
+        let result: String
+        if let idx = lang.firstIndex(of: "-") {
+            result = String(lang[..<idx])
+        } else {
+            result = lang
+        }
+        Self.baseLangLock.withLock { Self.baseLangCache[lang] = result }
+        return result
     }
 }
