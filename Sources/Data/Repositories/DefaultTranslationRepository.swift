@@ -21,6 +21,12 @@ final class DefaultTranslationRepository: TranslationRepository {
         return TranslationPayloadMapper.toDomain(dto)
     }
 
+    func fetchRemoteAndPersist() async throws -> TranslationPayload {
+        let (dto, raw) = try await remote.fetchRaw()
+        local.writeRaw(raw)
+        return TranslationPayloadMapper.toDomain(dto)
+    }
+
     func loadCached() -> TranslationPayload? {
         local.read().map(TranslationPayloadMapper.toDomain)
     }

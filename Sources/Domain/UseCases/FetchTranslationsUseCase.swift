@@ -7,8 +7,6 @@ package struct FetchTranslationsUseCase {
 
     /// Fetches fresh translations unconditionally, persists to cache, and returns the payload.
     package func execute() async throws -> TranslationPayload {
-        let payload = try await repository.fetchRemote()
-        repository.save(payload)
-        return payload
+        try await repository.fetchRemoteAndPersist()
     }
 }
