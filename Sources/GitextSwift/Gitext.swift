@@ -64,6 +64,7 @@ public final class Gitext {
         Task.detached(priority: .userInitiated) {
             let (payload, source) = container.loadInitial.execute()
             shared.withLock { shared._payload = payload }
+            shared.observableStore.notifyRefresh()
             switch source {
             case .cache:  shared.emit(.cacheHit)
             case .bundle: shared.emit(.bundleFallback)
