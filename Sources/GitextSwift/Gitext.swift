@@ -210,8 +210,7 @@ public final class Gitext {
         shared.withLock {
             if let cached = shared._cachedLanguage { return cached }
             let lang = Locale.current.language
-            var code = lang.languageCode?.identifier ?? "en"
-            if let region = lang.region?.identifier { code += "-\(region)" }
+            let code = lang.languageCode?.identifier ?? "en"
             shared._cachedLanguage = code
             return code
         }
